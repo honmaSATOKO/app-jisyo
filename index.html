@@ -3,87 +3,117 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>じしょ — 自分だけの辞書</title>
-  <meta name="description" content="ブラウザだけで使える、自分だけの辞書アプリ">
+  <title>JISYO — 自分だけの辞書</title>
+  <meta name="description" content="自分だけのことばを集めて引ける、ブラウザで動く辞書アプリ">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800&family=Shippori+Mincho:wght@600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header class="app-header">
-    <div class="brand">
-      <span class="brand-mark">辞</span>
-      <h1>じしょ</h1>
-    </div>
-    <div class="dict-switch">
-      <select id="dictSelect" aria-label="辞書を選ぶ"></select>
-      <button id="dictMenuBtn" class="icon-btn" aria-label="辞書の操作" aria-haspopup="true">⋯</button>
-      <div id="dictMenu" class="menu" hidden>
-        <button data-action="new">新しい辞書を作る</button>
-        <button data-action="rename">名前を変える</button>
-        <button data-action="delete" class="danger">この辞書を削除</button>
-      </div>
+  <header class="masthead">
+    <a class="wordmark" href="./" aria-label="JISYO トップ">JISYO<span class="wordmark-dot">.</span></a>
+    <p class="tagline">自分だけのことばを、<wbr>集めて引ける辞書</p>
+    <div class="search">
+      <input id="search" type="search" placeholder="ことば・読み・意味で検索" autocomplete="off" aria-label="検索">
+      <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 20 20"/></svg>
+      <kbd class="search-kbd" aria-hidden="true">/</kbd>
     </div>
   </header>
 
-  <main>
-    <section class="toolbar">
-      <div class="search-wrap">
-        <input id="search" type="search" placeholder="ことば・読み・意味で検索" autocomplete="off">
+  <div class="layout">
+    <aside class="side">
+      <section class="side-block">
+        <h2 class="side-label">Dictionaries <span>辞書</span></h2>
+        <ul id="dictList" class="dict-list"></ul>
+        <button id="newDict" class="text-btn" type="button">＋ 新しい辞書</button>
+      </section>
+      <section class="side-block side-index">
+        <h2 class="side-label">Index <span>索引</span></h2>
+        <nav id="kanaIndex" class="kana-index" aria-label="五十音索引"></nav>
+        <p id="indexNote" class="side-note" hidden>五十音順のときに使えます</p>
+      </section>
+    </aside>
+
+    <main class="main">
+      <div class="dict-head">
+        <h1 id="dictTitle" class="dict-title"></h1>
+        <p id="stats" class="dict-count"></p>
+        <div class="dict-actions">
+          <button id="renameDict" class="text-btn" type="button">名前を変更</button>
+          <button id="deleteDict" class="text-btn danger" type="button">削除</button>
+        </div>
       </div>
-      <select id="sort" aria-label="並び順">
-        <option value="kana">五十音順</option>
-        <option value="new">新しい順</option>
-        <option value="old">古い順</option>
-        <option value="updated">更新順</option>
-      </select>
-      <button id="addBtn" class="primary">＋ ことばを追加</button>
-    </section>
 
-    <section id="tagBar" class="tag-bar" aria-label="タグで絞り込み"></section>
+      <div class="filters">
+        <div id="tagBar" class="tag-bar" aria-label="タグで絞り込み"></div>
+        <label class="sort">
+          <span class="visually-hidden">並び順</span>
+          <select id="sort">
+            <option value="kana">五十音順</option>
+            <option value="new">新しい順</option>
+            <option value="old">古い順</option>
+            <option value="updated">更新順</option>
+          </select>
+        </label>
+      </div>
 
-    <p id="stats" class="stats"></p>
+      <section id="list" class="entry-list" aria-live="polite"></section>
 
-    <section id="list" class="entry-list" aria-live="polite"></section>
+      <div id="empty" class="empty" hidden>
+        <p class="empty-title">まだ、<wbr>ことばが<wbr>ありません。</p>
+        <p class="empty-text">気になったことば、覚えたいことばを<wbr>ひとつずつ集めていこう。</p>
+        <button id="emptyAdd" class="btn primary" type="button">最初のことばを追加</button>
+      </div>
+    </main>
+  </div>
 
-    <div id="empty" class="empty" hidden>
-      <p class="empty-title">まだことばがありません</p>
-      <p>「＋ ことばを追加」から最初のことばを登録してみよう。</p>
+  <button id="addBtn" class="add-tab" type="button" aria-label="ことばを追加">
+    <span class="add-plus" aria-hidden="true">＋</span><span class="add-text">ことばを追加</span>
+  </button>
+
+  <footer class="footer">
+    <div class="footer-actions">
+      <button id="exportJson" class="text-btn" type="button">JSONで書き出す</button>
+      <button id="exportCsv" class="text-btn" type="button">CSVで書き出す</button>
+      <label class="text-btn file-btn">
+        読み込む（JSON / CSV）
+        <input id="importFile" type="file" accept=".json,.csv,application/json,text/csv" hidden>
+      </label>
     </div>
-  </main>
-
-  <footer class="app-footer">
-    <button id="exportJson">JSONで書き出す</button>
-    <button id="exportCsv">CSVで書き出す</button>
-    <label class="file-btn">
-      読み込む（JSON / CSV）
-      <input id="importFile" type="file" accept=".json,.csv,application/json,text/csv" hidden>
-    </label>
-    <p class="note">データはこのブラウザの中だけに保存されます。ときどき書き出してバックアップしてね。</p>
+    <p class="footer-note">データはこのブラウザの中だけに保存されます。<wbr>ときどき書き出してバックアップしてね。</p>
+    <p class="footer-mark">JISYO.</p>
   </footer>
 
   <dialog id="entryDialog">
     <form id="entryForm" method="dialog">
       <h2 id="dialogTitle">ことばを追加</h2>
-      <label>見出し語 <span class="req">必須</span>
+      <label class="field field-word">
+        <span class="field-label">見出し語 <em>必須</em></span>
         <input name="word" required maxlength="200" autocomplete="off">
       </label>
-      <label>読み
+      <label class="field">
+        <span class="field-label">読み</span>
         <input name="reading" maxlength="200" autocomplete="off" placeholder="ひらがな・ローマ字など（並び替えに使います）">
       </label>
-      <label>意味 <span class="req">必須</span>
+      <label class="field">
+        <span class="field-label">意味 <em>必須</em></span>
         <textarea name="meaning" required rows="3" maxlength="5000"></textarea>
       </label>
-      <label>例文・メモ
+      <label class="field">
+        <span class="field-label">例文・メモ</span>
         <textarea name="example" rows="2" maxlength="5000"></textarea>
       </label>
-      <label>タグ
+      <label class="field">
+        <span class="field-label">タグ</span>
         <input name="tags" autocomplete="off" placeholder="カンマか空白で区切る（例: 英語, IT用語）" list="tagList">
         <datalist id="tagList"></datalist>
       </label>
       <div class="dialog-actions">
-        <button type="button" id="deleteEntry" class="danger" hidden>削除</button>
+        <button type="button" id="deleteEntry" class="text-btn danger" hidden>このことばを削除</button>
         <span class="spacer"></span>
-        <button type="button" id="cancelEntry">キャンセル</button>
-        <button type="submit" class="primary">保存</button>
+        <button type="button" id="cancelEntry" class="btn">キャンセル</button>
+        <button type="submit" class="btn primary">保存</button>
       </div>
     </form>
   </dialog>

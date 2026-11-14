@@ -106,13 +106,19 @@ const collator = new Intl.Collator('ja');
 
 const $ = sel => document.querySelector(sel);
 const els = {
-  dictSelect: $('#dictSelect'),
-  dictMenuBtn: $('#dictMenuBtn'),
-  dictMenu: $('#dictMenu'),
+  dictList: $('#dictList'),
+  newDict: $('#newDict'),
+  renameDict: $('#renameDict'),
+  deleteDict: $('#deleteDict'),
+  dictTitle: $('#dictTitle'),
+  kanaIndex: $('#kanaIndex'),
+  indexNote: $('#indexNote'),
   search: $('#search'),
   sort: $('#sort'),
   addBtn: $('#addBtn'),
+  emptyAdd: $('#emptyAdd'),
   tagBar: $('#tagBar'),
+  filters: $('.filters'),
   stats: $('#stats'),
   list: $('#list'),
   empty: $('#empty'),
@@ -132,6 +138,7 @@ const ui = {
   query: '',
   activeTag: null,
   editingId: null,
+  animateNext: true, // 次の描画で項目をふわっと出すか（初回・辞書切り替え時）
 };
 
 try {
@@ -185,13 +192,18 @@ function allTags(dict) {
   return [...set].sort(collator.compare);
 }
 
-function renderDictSelect() {
-  els.dictSelect.replaceChildren(
-    ...state.dicts.map(d => {
-      const opt = el('option', { value: d.id }, `${d.name}（${d.entries.length}）`);
-      if (d.id === state.currentId) opt.selected = true;
-      return opt;
-    })
+function renderDictList() {
+  els.dictList.replaceChildren(
+    ...state.dicts.map(d => el('li', {},
+      el('button', {
+        type: 'button',
+        'aria-current': String(d.id === state.currentId),
+        onclick: () => switchDict(d.id),
+      },
+        el('span', { class: 'name' }, d.name),
+        el('span', { class: 'count' }, d.entries.length),
+      )
+    ))
   );
 }
 
@@ -199,15 +211,16 @@ function renderTags(dict) {
   const tags = allTags(dict);
   if (ui.activeTag && !tags.includes(ui.activeTag)) ui.activeTag = null;
   els.tagBar.replaceChildren();
+  els.tagList.replaceChildren(...tags.map(t => el('option', { value: t })));
   if (tags.length === 0) return;
   const mk = (label, value) =>
     el('button', {
-      class: 'chip' + (ui.activeTag === value ? ' active' : ''),
+      class: 'chip',
       type: 'button',
+      'aria-pressed': String(ui.activeTag === value),
       onclick: () => { ui.activeTag = value; render(); },
     }, label);
   els.tagBar.append(mk('すべて', null), ...tags.map(t => mk('#' + t, t)));
-  els.tagList.replaceChildren(...tags.map(t => el('option', { value: t })));
 }
 
 function filteredEntries(dict) {
@@ -239,56 +252,112 @@ function filteredEntries(dict) {
   return list;
 }
 
+// 見出し（あ行・E など）を大きな1文字と補足に分ける
+function splitGroup(label) {
+  if (label.endsWith('行')) return { char: label[0], sub: label, latin: false };
+  if (/^[A-Z]$/.test(label)) return { char: label, sub: 'alphabet', latin: true };
+  if (label === '0-9') return { char: '#', sub: '数字', latin: true };
+  return { char: '…', sub: 'その他', latin: false };
+}
+
+const INDEX_KEYS = [
+  ...KANA_ROWS.map(([label]) => ({ text: label, groups: [label + '行'] })),
+  { text: 'A–Z', groups: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''), latin: true },
+  { text: '#', groups: ['0-9', 'その他'], latin: true },
+];
+
+function renderKanaIndex(present, usable) {
+  els.indexNote.hidden = usable;
+  els.kanaIndex.replaceChildren(...INDEX_KEYS.map(k => {
+    const target = k.groups.find(g => present.has(g));
+    return el('button', {
+      type: 'button',
+      class: k.latin ? 'latin' : '',
+      'aria-label': k.text + (k.text.length === 1 && !k.latin ? '行へ' : 'へ'),
+      ...(usable && target ? {} : { disabled: '' }),
+      onclick: () => {
+        const head = els.list.querySelector(`[data-group="${target}"]`);
+        if (head) head.scrollIntoView({ block: 'start' });
+      },
+    }, k.text);
+  }));
+}
+
 function renderEntry(e, q) {
   return el('button', {
     class: 'entry',
     type: 'button',
     onclick: () => openDialog(e.id),
   },
-    el('div', { class: 'entry-head' },
+    el('span', { class: 'entry-headword' },
       el('span', { class: 'entry-word' }, highlight(e.word, q)),
       e.reading ? el('span', { class: 'entry-reading' }, highlight(e.reading, q)) : null,
     ),
-    el('p', { class: 'entry-meaning' }, highlight(e.meaning, q)),
-    e.example ? el('p', { class: 'entry-example' }, highlight(e.example, q)) : null,
-    (e.tags && e.tags.length)
-      ? el('div', { class: 'entry-tags' }, ...e.tags.map(t => el('span', { class: 'tag' }, '#' + t)))
-      : null,
+    el('span', { class: 'entry-body' },
+      el('p', { class: 'entry-meaning' }, highlight(e.meaning, q)),
+      e.example ? el('p', { class: 'entry-example' }, highlight(e.example, q)) : null,
+      (e.tags && e.tags.length)
+        ? el('span', { class: 'entry-tags' }, ...e.tags.map(t => el('span', { class: 'tag' }, '#' + t)))
+        : null,
+    ),
+    el('span', { class: 'entry-edit', 'aria-hidden': 'true' }, '編集 →'),
   );
 }
 
 function render() {
   const dict = currentDict();
-  renderDictSelect();
+  renderDictList();
   renderTags(dict);
+  els.dictTitle.textContent = dict.name;
+  document.title = `${dict.name} — JISYO`;
 
   const q = normalize(ui.query.trim());
   const list = filteredEntries(dict);
   const total = dict.entries.length;
 
-  els.stats.textContent = total === 0 ? ''
-    : (q || ui.activeTag) ? `${total}語中 ${list.length}語が見つかりました`
-    : `${total}語`;
+  els.stats.textContent = total === 0 ? '0 words'
+    : (q || ui.activeTag) ? `${list.length} / ${total} words`
+    : `${total} words`;
 
   els.empty.hidden = total !== 0;
+  els.filters.hidden = total === 0;
+  els.list.hidden = total === 0;
+  els.list.classList.toggle('animate', ui.animateNext);
+  ui.animateNext = false;
   els.list.replaceChildren();
 
+  const showGroups = els.sort.value === 'kana' && !q;
+  const counts = new Map();
+  if (showGroups) list.forEach(e => {
+    const g = groupLabel(e);
+    counts.set(g, (counts.get(g) || 0) + 1);
+  });
+  renderKanaIndex(new Set(counts.keys()), showGroups);
+
   if (total !== 0 && list.length === 0) {
-    els.list.append(el('p', { class: 'stats' }, '見つかりませんでした。'));
+    els.list.append(el('p', { class: 'no-result' }, '見つかりませんでした。'));
     return;
   }
 
-  const showGroups = els.sort.value === 'kana' && !q;
   let lastGroup = null;
+  let i = 0;
   for (const e of list) {
     if (showGroups) {
       const g = groupLabel(e);
       if (g !== lastGroup) {
-        els.list.append(el('div', { class: 'group-head' }, g));
+        const { char, sub, latin } = splitGroup(g);
+        const head = el('div', { class: 'group-head', 'data-group': g },
+          el('span', { class: 'group-char' + (latin ? ' latin' : '') }, char),
+          el('span', { class: 'group-sub' }, `${sub}・${counts.get(g)}語`),
+        );
+        head.style.setProperty('--i', Math.min(i++, 15));
+        els.list.append(head);
         lastGroup = g;
       }
     }
-    els.list.append(renderEntry(e, q));
+    const node = renderEntry(e, q);
+    node.style.setProperty('--i', Math.min(i++, 15));
+    els.list.append(node);
   }
 }
 
@@ -361,50 +430,45 @@ els.deleteEntry.addEventListener('click', () => {
 
 /* ---------- 辞書の切り替え・作成・名前変更・削除 ---------- */
 
-els.dictSelect.addEventListener('change', () => {
-  state.currentId = els.dictSelect.value;
+function switchDict(id) {
+  if (id === state.currentId) return;
+  state.currentId = id;
   ui.activeTag = null;
+  ui.animateNext = true;
   saveState();
   render();
+}
+
+els.newDict.addEventListener('click', () => {
+  const name = prompt('新しい辞書の名前', '新しい辞書');
+  if (!name || !name.trim()) return;
+  const d = newDict(name.trim());
+  state.dicts.push(d);
+  saveState();
+  switchDict(d.id);
+  toast(`「${d.name}」を作りました`);
 });
 
-els.dictMenuBtn.addEventListener('click', ev => {
-  ev.stopPropagation();
-  els.dictMenu.hidden = !els.dictMenu.hidden;
-});
-document.addEventListener('click', () => { els.dictMenu.hidden = true; });
-
-els.dictMenu.addEventListener('click', ev => {
-  const action = ev.target.dataset.action;
-  if (!action) return;
-  els.dictMenu.hidden = true;
+els.renameDict.addEventListener('click', () => {
   const dict = currentDict();
-
-  if (action === 'new') {
-    const name = prompt('新しい辞書の名前', '新しい辞書');
-    if (!name || !name.trim()) return;
-    const d = newDict(name.trim());
-    state.dicts.push(d);
-    state.currentId = d.id;
-    ui.activeTag = null;
-    toast(`「${d.name}」を作りました`);
-  } else if (action === 'rename') {
-    const name = prompt('辞書の名前', dict.name);
-    if (!name || !name.trim()) return;
-    dict.name = name.trim();
-  } else if (action === 'delete') {
-    if (state.dicts.length === 1) {
-      toast('辞書が1つだけのときは削除できません');
-      return;
-    }
-    if (!confirm(`「${dict.name}」（${dict.entries.length}語）を削除する？\n元に戻せません。`)) return;
-    state.dicts = state.dicts.filter(d => d.id !== dict.id);
-    state.currentId = state.dicts[0].id;
-    ui.activeTag = null;
-    toast('辞書を削除しました');
-  }
+  const name = prompt('辞書の名前', dict.name);
+  if (!name || !name.trim()) return;
+  dict.name = name.trim();
   saveState();
   render();
+});
+
+els.deleteDict.addEventListener('click', () => {
+  const dict = currentDict();
+  if (state.dicts.length === 1) {
+    toast('辞書が1つだけのときは削除できません');
+    return;
+  }
+  if (!confirm(`「${dict.name}」（${dict.entries.length}語）を削除する？\n元に戻せません。`)) return;
+  state.dicts = state.dicts.filter(d => d.id !== dict.id);
+  saveState();
+  switchDict(state.dicts[0].id);
+  toast('辞書を削除しました');
 });
 
 /* ---------- 検索・並び替え ---------- */
@@ -420,6 +484,7 @@ els.sort.addEventListener('change', () => {
 });
 
 els.addBtn.addEventListener('click', () => openDialog());
+els.emptyAdd.addEventListener('click', () => openDialog());
 
 // キーボードショートカット: "/" で検索、"n" で追加
 document.addEventListener('keydown', ev => {

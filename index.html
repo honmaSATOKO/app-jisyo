@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>じしょ — 自分だけの辞書</title>
+  <meta name="description" content="ブラウザだけで使える、自分だけの辞書アプリ">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark">辞</span>
+      <h1>じしょ</h1>
+    </div>
+    <div class="dict-switch">
+      <select id="dictSelect" aria-label="辞書を選ぶ"></select>
+      <button id="dictMenuBtn" class="icon-btn" aria-label="辞書の操作" aria-haspopup="true">⋯</button>
+      <div id="dictMenu" class="menu" hidden>
+        <button data-action="new">新しい辞書を作る</button>
+        <button data-action="rename">名前を変える</button>
+        <button data-action="delete" class="danger">この辞書を削除</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="toolbar">
+      <div class="search-wrap">
+        <input id="search" type="search" placeholder="ことば・読み・意味で検索" autocomplete="off">
+      </div>
+      <select id="sort" aria-label="並び順">
+        <option value="kana">五十音順</option>
+        <option value="new">新しい順</option>
+        <option value="old">古い順</option>
+        <option value="updated">更新順</option>
+      </select>
+      <button id="addBtn" class="primary">＋ ことばを追加</button>
+    </section>
+
+    <section id="tagBar" class="tag-bar" aria-label="タグで絞り込み"></section>
+
+    <p id="stats" class="stats"></p>
+
+    <section id="list" class="entry-list" aria-live="polite"></section>
+
+    <div id="empty" class="empty" hidden>
+      <p class="empty-title">まだことばがありません</p>
+      <p>「＋ ことばを追加」から最初のことばを登録してみよう。</p>
+    </div>
+  </main>
+
+  <footer class="app-footer">
+    <button id="exportJson">JSONで書き出す</button>
+    <button id="exportCsv">CSVで書き出す</button>
+    <label class="file-btn">
+      読み込む（JSON / CSV）
+      <input id="importFile" type="file" accept=".json,.csv,application/json,text/csv" hidden>
+    </label>
+    <p class="note">データはこのブラウザの中だけに保存されます。ときどき書き出してバックアップしてね。</p>
+  </footer>
+
+  <dialog id="entryDialog">
+    <form id="entryForm" method="dialog">
+      <h2 id="dialogTitle">ことばを追加</h2>
+      <label>見出し語 <span class="req">必須</span>
+        <input name="word" required maxlength="200" autocomplete="off">
+      </label>
+      <label>読み
+        <input name="reading" maxlength="200" autocomplete="off" placeholder="ひらがな・ローマ字など（並び替えに使います）">
+      </label>
+      <label>意味 <span class="req">必須</span>
+        <textarea name="meaning" required rows="3" maxlength="5000"></textarea>
+      </label>
+      <label>例文・メモ
+        <textarea name="example" rows="2" maxlength="5000"></textarea>
+      </label>
+      <label>タグ
+        <input name="tags" autocomplete="off" placeholder="カンマか空白で区切る（例: 英語, IT用語）" list="tagList">
+        <datalist id="tagList"></datalist>
+      </label>
+      <div class="dialog-actions">
+        <button type="button" id="deleteEntry" class="danger" hidden>削除</button>
+        <span class="spacer"></span>
+        <button type="button" id="cancelEntry">キャンセル</button>
+        <button type="submit" class="primary">保存</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

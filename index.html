@@ -76,6 +76,7 @@
     <div class="footer-actions">
       <button id="exportJson" class="text-btn" type="button">JSONで書き出す</button>
       <button id="exportCsv" class="text-btn" type="button">CSVで書き出す</button>
+      <button id="exportPdf" class="text-btn" type="button">PDFで書き出す</button>
       <label class="text-btn file-btn">
         読み込む（JSON / CSV）
         <input id="importFile" type="file" accept=".json,.csv,application/json,text/csv" hidden>
@@ -119,6 +120,9 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" hidden></div>
+
+  <!-- PDF書き出し用（印刷するときだけ表示） -->
+  <div id="printView" class="print-view" aria-hidden="true"></div>
 
   <script src="app.js"></script>
 </body>

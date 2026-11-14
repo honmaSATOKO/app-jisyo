@@ -570,6 +570,123 @@ dialog::backdrop { background: rgba(26, 24, 23, .35); backdrop-filter: blur(2px)
   #entryForm { padding: 1.5rem 1.3rem 1.3rem; }
 }
 
+/* ---------- PDF書き出し（印刷） ---------- */
+
+.print-view { display: none; }
+
+@media print {
+  @page {
+    size: A4;
+    margin: 16mm 15mm 18mm;
+    @bottom-center {
+      content: counter(page) " / " counter(pages);
+      font-family: "Outfit", "Avenir Next", sans-serif;
+      font-size: 8pt;
+      color: #8b8380;
+    }
+  }
+
+  html { scroll-behavior: auto; }
+  body {
+    background: #fff;
+    color: #2f2725;
+    font-size: 9.5pt;
+    letter-spacing: .04em;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  body::before { display: none; }
+  body > *:not(.print-view) { display: none !important; }
+
+  .print-view { display: block; }
+
+  .pv-head {
+    border-bottom: 1pt solid #2f2725;
+    padding-bottom: 5mm;
+    margin-bottom: 7mm;
+  }
+  .pv-mark {
+    margin: 0 0 4mm;
+    font-family: var(--latin);
+    font-weight: 800;
+    font-size: 11pt;
+    letter-spacing: .02em;
+  }
+  .pv-mark span { color: #2c5bd4; }
+  .pv-title {
+    margin: 0 0 2.5mm;
+    font-weight: 700;
+    font-size: 26pt;
+    line-height: 1.3;
+    letter-spacing: .04em;
+  }
+  .pv-meta { margin: 0; font-size: 8.5pt; color: #8b8380; }
+  .pv-meta span { margin: 0 .5em; color: #c9c3be; }
+
+  .pv-body {
+    columns: 2;
+    column-gap: 10mm;
+    column-rule: .5pt solid #e4e0dc;
+  }
+
+  .pv-group {
+    display: flex;
+    align-items: baseline;
+    gap: 2.5mm;
+    margin: 6mm 0 1mm;
+    padding-bottom: 1mm;
+    border-bottom: .75pt solid #2f2725;
+    break-inside: avoid;
+    break-after: avoid;
+  }
+  .pv-group:first-child { margin-top: 0; }
+  .pv-group-char {
+    font-family: var(--mincho);
+    font-weight: 700;
+    font-size: 20pt;
+    line-height: 1;
+    letter-spacing: 0;
+  }
+  .pv-group-char.latin { font-family: var(--latin); font-weight: 800; font-size: 17pt; }
+  .pv-group-sub { font-size: 7.5pt; font-weight: 500; color: #8b8380; }
+
+  .pv-entry {
+    break-inside: avoid;
+    padding: 2.6mm 0 2.8mm;
+    border-bottom: .5pt solid #e4e0dc;
+  }
+  .pv-entry p { margin: 0; white-space: pre-wrap; }
+  .pv-word {
+    font-family: var(--mincho);
+    font-weight: 700;
+    font-size: 12.5pt;
+    line-height: 1.4;
+    letter-spacing: .04em;
+  }
+  .pv-reading {
+    margin-left: 2.5mm;
+    font-family: var(--gothic);
+    font-weight: 500;
+    font-size: 7.5pt;
+    color: #8b8380;
+    letter-spacing: .1em;
+  }
+  .pv-entry .pv-meaning { margin-top: 1mm; line-height: 1.75; }
+  .pv-entry .pv-example { margin-top: 1.2mm; font-size: 8.5pt; color: #6f6763; line-height: 1.7; }
+  .pv-example::before {
+    content: "例";
+    display: inline-block;
+    margin-right: .6em;
+    padding: 0 .35em;
+    border: .5pt solid currentColor;
+    border-radius: 2px;
+    font-size: 6.5pt;
+    line-height: 1.5;
+    vertical-align: .1em;
+  }
+  .pv-entry .pv-tags { margin-top: 1.2mm; font-size: 7.5pt; font-weight: 700; color: #2c5bd4; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
   html { scroll-behavior: auto; }

@@ -130,6 +130,8 @@ const els = {
   tagList: $('#tagList'),
   exportJson: $('#exportJson'),
   exportCsv: $('#exportCsv'),
+  exportPdf: $('#exportPdf'),
+  printView: $('#printView'),
   importFile: $('#importFile'),
   toast: $('#toast'),
 };
@@ -539,6 +541,85 @@ els.exportCsv.addEventListener('click', () => {
   const csv = '﻿' + rows.map(r => r.map(csvCell).join(',')).join('\r\n');
   download(`${safeName(dict.name)}-${today()}.csv`, csv, 'text/csv');
   toast(`「${dict.name}」をCSVで書き出しました`);
+});
+
+/* ---------- PDF（印刷用ページを組んでブラウザの「PDFに保存」を使う） ---------- */
+// 日本語フォントをそのまま使えるよう、PDFライブラリではなく印刷機能で書き出す
+
+function formatDate(d = new Date()) {
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())}`;
+}
+
+function buildPrintView(dict, list) {
+  const filters = [];
+  if (ui.activeTag) filters.push('#' + ui.activeTag);
+  if (ui.query.trim()) filters.push(`「${ui.query.trim()}」で検索`);
+  const sortLabel = els.sort.selectedOptions[0].textContent;
+  const showGroups = els.sort.value === 'kana';
+
+  const cover = el('header', { class: 'pv-head' },
+    el('p', { class: 'pv-mark' }, 'JISYO', el('span', {}, '.')),
+    el('h1', { class: 'pv-title' }, dict.name),
+    el('p', { class: 'pv-meta' },
+      `${list.length}語`, el('span', {}, '／'), sortLabel,
+      filters.length ? el('span', {}, '／') : null,
+      filters.length ? filters.join('・') : null,
+      el('span', {}, '／'), formatDate(),
+    ),
+  );
+
+  const body = el('div', { class: 'pv-body' });
+  let lastGroup = null;
+  for (const e of list) {
+    if (showGroups) {
+      const g = groupLabel(e);
+      if (g !== lastGroup) {
+        const { char, sub, latin } = splitGroup(g);
+        body.append(el('h2', { class: 'pv-group' },
+          el('span', { class: 'pv-group-char' + (latin ? ' latin' : '') }, char),
+          el('span', { class: 'pv-group-sub' }, sub),
+        ));
+        lastGroup = g;
+      }
+    }
+    body.append(el('article', { class: 'pv-entry' },
+      el('p', { class: 'pv-word' },
+        e.word,
+        e.reading ? el('span', { class: 'pv-reading' }, e.reading) : null,
+      ),
+      el('p', { class: 'pv-meaning' }, e.meaning),
+      e.example ? el('p', { class: 'pv-example' }, e.example) : null,
+      (e.tags && e.tags.length)
+        ? el('p', { class: 'pv-tags' }, e.tags.map(t => '#' + t).join('　'))
+        : null,
+    ));
+  }
+
+  els.printView.replaceChildren(cover, body);
+}
+
+els.exportPdf.addEventListener('click', async () => {
+  const dict = currentDict();
+  const list = filteredEntries(dict);
+  if (list.length === 0) {
+    toast('書き出すことばがありません');
+    return;
+  }
+  buildPrintView(dict, list);
+
+  // 保存するファイル名の候補はページのタイトルになる
+  const prevTitle = document.title;
+  document.title = `${safeName(dict.name)}-${today()}`;
+  const restore = () => {
+    document.title = prevTitle;
+    els.printView.replaceChildren();
+    window.removeEventListener('afterprint', restore);
+  };
+  window.addEventListener('afterprint', restore);
+
+  try { await document.fonts.ready; } catch (e) { /* 無視 */ }
+  window.print();
 });
 
 /* ---------- 読み込み ---------- */
